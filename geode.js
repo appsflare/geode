@@ -88,24 +88,32 @@ Geode.prototype.request = function (collection, data, callback) {
   var parsedBody
   var geodeError
 
-  request.get({
-    url: url,
-    qs: payload
-  }, function (err, res, body) {
-    if (err) {
-      self.error(err, callback)
-    } else {
-      try {
-        parsedBody = JSON.parse(body)
-      } catch (parseErr) {
-        self.error(parseErr, callback)
-        return
-      }
-      geodeError = self.errorOnResponseException(parsedBody)
+  return new Promise(function (resolve, reject) {
+    request.get({
+      url: url,
+      qs: payload
+    }, function (err, res, body) {
+      if (err) {
+        self.error(err, callback)
+      } else {
+        try {
+          parsedBody = JSON.parse(body)
+        } catch (parseErr) {
+          reject(parseErr)
+          self.error(parseErr, callback)
+          return
+        }
+        geodeError = self.errorOnResponseException(parsedBody)
 
-      if (geodeError) self.error(geodeError, callback)
-      else callback(null, parsedBody)
-    }
+        if (geodeError) {
+          reject(geodeError)
+          self.error(geodeError, callback)
+        } else {
+          resolve(parsedBody)
+          callback(null, parsedBody)
+        }
+      }
+    })
   })
 }
 
@@ -153,7 +161,7 @@ for (var i = 0; i < Geode.METHODS.length; i += 1) {
   if (!Geode.prototype[methodName]) {
     (function (n) {
       Geode.prototype[n] = function (data, callback) {
-        this.request(n, data, callback)
+        return this.request(n, data, callback)
       }
     }(methodName))
   }
